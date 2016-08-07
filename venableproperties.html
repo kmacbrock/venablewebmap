@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css" />
+        <link rel="stylesheet" type="text/css" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/label.css" />
+        <link rel="stylesheet" href="css/MarkerCluster.css" />
+        <link rel="stylesheet" href="css/MarkerCluster.Default.css" />
+        <link rel="stylesheet" href="css/leaflet.draw.css" />
+        <link rel="stylesheet" href="css/leaflet.measurecontrol.css" />
+		<link rel="stylesheet" href="dist/easyPrint.css"/>
+        <script src="js/leaflet.js"></script>
+        <script src="js/OSMBuildings-Leaflet.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/label.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/leaflet.draw.js"></script>
+        <script src="js/leaflet.measurecontrol.js"></script>
+        <script src="js/leaflet.markercluster.js"></script>
+		 <script src="js/jquery-3.1.0.js"></script>
+		 <script src="dist/leaflet.easyPrint.js"></script>
+        <style>
+        #map {
+			position: relative;
+            width: 100%;
+            height: 750px;
+        }
+		#layerDropdown {
+			position: relative;
+			z-index: 9999999;
+			text-align: right;
+			padding-right: 10px;
+			padding-top: 10px;
+						}
+		table, th, td{
+			border: 1px solid black;
+		}
+		th {
+			text-align: center;
+			}
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+		
+			<div id="layerDropdown">
+				<select id="countyLayers" onchange="dropdownChanged()">
+					<option value="dummy" disabled selected>Select County</option>
+					<option value="Atascosa">Atascosa, TX</option>
+					<option value="DeWitt">DeWitt, TX</option>
+					<option value="Frio">Frio, TX</option>
+					<option value="Gonzales">Gonzales, TX</option>
+					<option value="Karnes">Karnes, TX</option>
+					<option value="LaSalle">LaSalle, TX</option>
+					<option value="Lavaca">Lavaca, TX</option>
+					<option value="LiveOak">Live Oak, TX</option>
+					<option value="Wilson">Wilson, TX</option>
+				</select>
+			</div>
+			</div>
+			<div id="dataTable">
+				<table style="width:100%">
+					<tr>
+						<th>Name</th>
+						<th>Acreage</th>
+						<th>NMA</th>
+						<th>Legal Description</th>
+					</tr>	
+					<tr>
+						<td id="name"></td>
+						<td id="acres"></td>
+						<td id="nma"></td>
+						<td id="legal"></td>
+					</tr>	
+				</table>
+			</div>
+        <script src="data/json_WilsonCountyTXParcels0.js"></script>
+        <script src="data/json_LiveOakCountyTXParcels1.js"></script>
+        <script src="data/json_LavacaCountyTXParcels2.js"></script>
+        <script src="data/json_LaSalleCountyTXParcels3.js"></script>
+        <script src="data/json_KarnesCountyTXParcels4.js"></script>
+        <script src="data/json_GonzalesCountyTXParcels5.js"></script>
+        <script src="data/json_FrioCountyTXParcels6.js"></script>
+        <script src="data/json_DeWittCountyTXParcels7.js"></script>
+        <script src="data/json_AtascosaCountyTXParcels8.js"></script>
+        <script>
+        var highlightLayer;
+		var dropdownLayer = {};
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString') {
+              highlightLayer.setStyle({
+                color: '#ffff00',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: '#ffff00',
+                fillOpacity: 1
+              });
+            }
+        }
+        L.ImageOverlay.include({
+            getBounds: function () {
+                return this._bounds;
+            }
+        });
+        var map = L.map('map', {
+            measureControl:true,
+            zoomControl:true, maxZoom:28, minZoom:1
+        })
+        var hash = new L.Hash(map);
+        //map.attributionControl.addAttribution('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a>');
+        var feature_group = new L.featureGroup([]);
+        var bounds_group = new L.featureGroup([]);
+        var raster_group = new L.LayerGroup([]);
+        var basemap0 = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+			subdomains:['mt0','mt1','mt2','mt3'],
+            maxZoom: 28
+        });
+        basemap0.addTo(map);
+		L.easyPrint().addTo(map);
+        var initialOrder = new Array();
+        var layerOrder = new Array();
+        function stackLayers() {
+            for (index = 0; index < initialOrder.length; index++) {
+                map.removeLayer(initialOrder[index]);
+                map.addLayer(initialOrder[index]);
+            }
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+        }
+        function restackLayers() {
+            for (index = 0; index < layerOrder.length; index++) {
+                layerOrder[index].bringToFront();
+            }
+        }
+        layerControl = L.control.layers({},{},{collapsed:false});
+        function pop_WilsonCountyTXParcels0(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStyleWilsonCountyTXParcels0(feature));
+
+                },
+                mouseover: highlightFeature,
+				click: function(e){
+					document.getElementById("name").innerHTML = feature.properties['Name'];
+					document.getElementById("acres").innerHTML = feature.properties['Acreage'];
+					document.getElementById("nma").innerHTML = feature.properties['NMA'];
+					document.getElementById("legal").innerHTML = feature.properties['Legal_Desc'];
+					}
+            });
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['Name'] !== null ? Autolinker.link(String(feature.properties['Name'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Acreage'] !== null ? Autolinker.link(String(feature.properties['Acreage'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['NMA'] !== null ? Autolinker.link(String(feature.properties['NMA'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Legal_Desc'] !== null ? Autolinker.link(String(feature.properties['Legal_Desc'])) : '') + '</td></tr></table>';
+            //layer.bindPopup(popupContent);
+			
+        }
+
+        function doStyleWilsonCountyTXParcels0(feature) {
+            return {
+                weight: 3.44,
+                color: '#0042e2',
+                fillColor: '#000000',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                opacity: 1.0,
+                fillOpacity: 0.0
+            };
+        }
+        var json_WilsonCountyTXParcels0JSON = new L.geoJson(json_WilsonCountyTXParcels0, {
+            onEachFeature: pop_WilsonCountyTXParcels0,
+            style: doStyleWilsonCountyTXParcels0
+        });
+		dropdownLayer["Wilson"] = json_WilsonCountyTXParcels0JSON;
+        layerOrder[layerOrder.length] = json_WilsonCountyTXParcels0JSON;
+        bounds_group.addLayer(json_WilsonCountyTXParcels0JSON);
+        initialOrder[initialOrder.length] = json_WilsonCountyTXParcels0JSON;
+        feature_group.addLayer(json_WilsonCountyTXParcels0JSON);
+		function pop_LiveOakCountyTXParcels1(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStyleLiveOakCountyTXParcels1(feature));
+
+                },
+                mouseover: highlightFeature,
+				click: function(e){
+					document.getElementById("name").innerHTML = feature.properties['Name'];
+					document.getElementById("acres").innerHTML = feature.properties['Acreage'];
+					document.getElementById("nma").innerHTML = feature.properties['NMA'];
+					document.getElementById("legal").innerHTML = feature.properties['Legal_Desc'];
+					}
+            });
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['Name'] !== null ? Autolinker.link(String(feature.properties['Name'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Acreage'] !== null ? Autolinker.link(String(feature.properties['Acreage'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['NMA'] !== null ? Autolinker.link(String(feature.properties['NMA'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Legal_Desc'] !== null ? Autolinker.link(String(feature.properties['Legal_Desc'])) : '') + '</td></tr></table>';
+            //layer.bindPopup(popupContent);
+        }
+
+        function doStyleLiveOakCountyTXParcels1(feature) {
+            return {
+                weight: 3.44,
+                color: '#0042e2',
+                fillColor: '#000000',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                opacity: 1.0,
+                fillOpacity: 0.0
+            };
+        }
+        var json_LiveOakCountyTXParcels1JSON = new L.geoJson(json_LiveOakCountyTXParcels1, {
+            onEachFeature: pop_LiveOakCountyTXParcels1,
+            style: doStyleLiveOakCountyTXParcels1
+        });
+		dropdownLayer["LiveOak"] = json_LiveOakCountyTXParcels1JSON;
+        layerOrder[layerOrder.length] = json_LiveOakCountyTXParcels1JSON;
+        bounds_group.addLayer(json_LiveOakCountyTXParcels1JSON);
+        initialOrder[initialOrder.length] = json_LiveOakCountyTXParcels1JSON;
+        feature_group.addLayer(json_LiveOakCountyTXParcels1JSON);
+		function pop_LavacaCountyTXParcels2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStyleLavacaCountyTXParcels2(feature));
+
+                },
+                mouseover: highlightFeature,
+				click: function(e){
+					document.getElementById("name").innerHTML = feature.properties['Name'];
+					document.getElementById("acres").innerHTML = feature.properties['Acreage'];
+					document.getElementById("nma").innerHTML = feature.properties['NMA'];
+					document.getElementById("legal").innerHTML = feature.properties['Legal_Desc'];
+					}
+            });
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['Name'] !== null ? Autolinker.link(String(feature.properties['Name'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Acreage'] !== null ? Autolinker.link(String(feature.properties['Acreage'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['NMA'] !== null ? Autolinker.link(String(feature.properties['NMA'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Legal_Desc'] !== null ? Autolinker.link(String(feature.properties['Legal_Desc'])) : '') + '</td></tr></table>';
+            //layer.bindPopup(popupContent);
+        }
+
+        function doStyleLavacaCountyTXParcels2(feature) {
+            return {
+                weight: 3.44,
+                color: '#0042e2',
+                fillColor: '#000000',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                opacity: 1.0,
+                fillOpacity: 0.0
+            };
+        }
+        var json_LavacaCountyTXParcels2JSON = new L.geoJson(json_LavacaCountyTXParcels2, {
+            onEachFeature: pop_LavacaCountyTXParcels2,
+            style: doStyleLavacaCountyTXParcels2
+        });
+		dropdownLayer["Lavaca"] = json_LavacaCountyTXParcels2JSON;
+        layerOrder[layerOrder.length] = json_LavacaCountyTXParcels2JSON;
+        bounds_group.addLayer(json_LavacaCountyTXParcels2JSON);
+        initialOrder[initialOrder.length] = json_LavacaCountyTXParcels2JSON;
+        feature_group.addLayer(json_LavacaCountyTXParcels2JSON);
+        function pop_LaSalleCountyTXParcels3(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStyleLaSalleCountyTXParcels3(feature));
+
+                },
+                mouseover: highlightFeature,
+				click: function(e){
+					document.getElementById("name").innerHTML = feature.properties['Name'];
+					document.getElementById("acres").innerHTML = feature.properties['Acreage'];
+					document.getElementById("nma").innerHTML = feature.properties['NMA'];
+					document.getElementById("legal").innerHTML = feature.properties['Legal_Desc'];
+					}
+            });
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['Name'] !== null ? Autolinker.link(String(feature.properties['Name'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Acreage'] !== null ? Autolinker.link(String(feature.properties['Acreage'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['NMA'] !== null ? Autolinker.link(String(feature.properties['NMA'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Legal_Desc'] !== null ? Autolinker.link(String(feature.properties['Legal_Desc'])) : '') + '</td></tr></table>';
+            //layer.bindPopup(popupContent);
+        }
+
+        function doStyleLaSalleCountyTXParcels3(feature) {
+            return {
+                weight: 3.44,
+                color: '#0042e2',
+                fillColor: '#000000',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                opacity: 1.0,
+                fillOpacity: 0.0
+            };
+        }
+        var json_LaSalleCountyTXParcels3JSON = new L.geoJson(json_LaSalleCountyTXParcels3, {
+            onEachFeature: pop_LaSalleCountyTXParcels3,
+            style: doStyleLaSalleCountyTXParcels3
+        });
+		dropdownLayer["LaSalle"] = json_LaSalleCountyTXParcels3JSON;
+        layerOrder[layerOrder.length] = json_LaSalleCountyTXParcels3JSON;
+        bounds_group.addLayer(json_LaSalleCountyTXParcels3JSON);
+        initialOrder[initialOrder.length] = json_LaSalleCountyTXParcels3JSON;
+        feature_group.addLayer(json_LaSalleCountyTXParcels3JSON);
+		function pop_KarnesCountyTXParcels4(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStyleKarnesCountyTXParcels4(feature));
+
+                },
+                mouseover: highlightFeature,
+				click: function(e){
+					document.getElementById("name").innerHTML = feature.properties['Name'];
+					document.getElementById("acres").innerHTML = feature.properties['Acreage'];
+					document.getElementById("nma").innerHTML = feature.properties['NMA'];
+					document.getElementById("legal").innerHTML = feature.properties['Legal_Desc'];
+					}
+            });
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['Name'] !== null ? Autolinker.link(String(feature.properties['Name'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Acreage'] !== null ? Autolinker.link(String(feature.properties['Acreage'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['NMA'] !== null ? Autolinker.link(String(feature.properties['NMA'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Legal_Desc'] !== null ? Autolinker.link(String(feature.properties['Legal_Desc'])) : '') + '</td></tr></table>';
+            //layer.bindPopup(popupContent);
+        }
+
+        function doStyleKarnesCountyTXParcels4(feature) {
+            return {
+                weight: 3.44,
+                color: '#0042e2',
+                fillColor: '#000000',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                opacity: 1.0,
+                fillOpacity: 0.0
+            };
+        }
+        var json_KarnesCountyTXParcels4JSON = new L.geoJson(json_KarnesCountyTXParcels4, {
+            onEachFeature: pop_KarnesCountyTXParcels4,
+            style: doStyleKarnesCountyTXParcels4
+        });
+		dropdownLayer["Karnes"] = json_KarnesCountyTXParcels4JSON;
+        layerOrder[layerOrder.length] = json_KarnesCountyTXParcels4JSON;
+        bounds_group.addLayer(json_KarnesCountyTXParcels4JSON);
+        initialOrder[initialOrder.length] = json_KarnesCountyTXParcels4JSON;
+        feature_group.addLayer(json_KarnesCountyTXParcels4JSON);
+		function pop_GonzalesCountyTXParcels5(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStyleGonzalesCountyTXParcels5(feature));
+
+                },
+                mouseover: highlightFeature,
+				click: function(e){
+					document.getElementById("name").innerHTML = feature.properties['Name'];
+					document.getElementById("acres").innerHTML = feature.properties['Acreage'];
+					document.getElementById("nma").innerHTML = feature.properties['NMA'];
+					document.getElementById("legal").innerHTML = feature.properties['Legal_Desc'];
+					}
+            });
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['Name'] !== null ? Autolinker.link(String(feature.properties['Name'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Acreage'] !== null ? Autolinker.link(String(feature.properties['Acreage'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['NMA'] !== null ? Autolinker.link(String(feature.properties['NMA'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Legal_Desc'] !== null ? Autolinker.link(String(feature.properties['Legal_Desc'])) : '') + '</td></tr></table>';
+            //layer.bindPopup(popupContent);
+        }
+
+        function doStyleGonzalesCountyTXParcels5(feature) {
+            return {
+                weight: 3.44,
+                color: '#0042e2',
+                fillColor: '#000000',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                opacity: 1.0,
+                fillOpacity: 0.0
+            };
+        }
+        var json_GonzalesCountyTXParcels5JSON = new L.geoJson(json_GonzalesCountyTXParcels5, {
+            onEachFeature: pop_GonzalesCountyTXParcels5,
+            style: doStyleGonzalesCountyTXParcels5
+        });
+		dropdownLayer["Gonzales"] = json_GonzalesCountyTXParcels5JSON;
+        layerOrder[layerOrder.length] = json_GonzalesCountyTXParcels5JSON;
+        bounds_group.addLayer(json_GonzalesCountyTXParcels5JSON);
+        initialOrder[initialOrder.length] = json_GonzalesCountyTXParcels5JSON;
+        feature_group.addLayer(json_GonzalesCountyTXParcels5JSON);
+		function pop_FrioCountyTXParcels6(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStyleFrioCountyTXParcels6(feature));
+
+                },
+                mouseover: highlightFeature,
+				click: function(e){
+					document.getElementById("name").innerHTML = feature.properties['Name'];
+					document.getElementById("acres").innerHTML = feature.properties['Acreage'];
+					document.getElementById("nma").innerHTML = feature.properties['NMA'];
+					document.getElementById("legal").innerHTML = feature.properties['Legal_Desc'];
+					}
+            });
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['Name'] !== null ? Autolinker.link(String(feature.properties['Name'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Acreage'] !== null ? Autolinker.link(String(feature.properties['Acreage'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['NMA'] !== null ? Autolinker.link(String(feature.properties['NMA'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Legal_Desc'] !== null ? Autolinker.link(String(feature.properties['Legal_Desc'])) : '') + '</td></tr></table>';
+            //layer.bindPopup(popupContent);
+        }
+
+        function doStyleFrioCountyTXParcels6(feature) {
+            return {
+                weight: 3.44,
+                color: '#0042e2',
+                fillColor: '#000000',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                opacity: 1.0,
+                fillOpacity: 0.0
+            };
+        }
+        var json_FrioCountyTXParcels6JSON = new L.geoJson(json_FrioCountyTXParcels6, {
+            onEachFeature: pop_FrioCountyTXParcels6,
+            style: doStyleFrioCountyTXParcels6
+        });
+		dropdownLayer["Frio"] = json_FrioCountyTXParcels6JSON;
+        layerOrder[layerOrder.length] = json_FrioCountyTXParcels6JSON;
+        bounds_group.addLayer(json_FrioCountyTXParcels6JSON);
+        initialOrder[initialOrder.length] = json_FrioCountyTXParcels6JSON;
+        feature_group.addLayer(json_FrioCountyTXParcels6JSON);
+        function pop_DeWittCountyTXParcels7(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStyleDeWittCountyTXParcels7(feature));
+
+                },
+                mouseover: highlightFeature,
+				click: function(e){
+					document.getElementById("name").innerHTML = feature.properties['Name'];
+					document.getElementById("acres").innerHTML = feature.properties['Acreage'];
+					document.getElementById("nma").innerHTML = feature.properties['NMA'];
+					document.getElementById("legal").innerHTML = feature.properties['Legal_Desc'];
+					}
+            });
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['Name'] !== null ? Autolinker.link(String(feature.properties['Name'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Acreage'] !== null ? Autolinker.link(String(feature.properties['Acreage'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['NMA'] !== null ? Autolinker.link(String(feature.properties['NMA'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Legal_Desc'] !== null ? Autolinker.link(String(feature.properties['Legal_Desc'])) : '') + '</td></tr></table>';
+            //layer.bindPopup(popupContent);
+        }
+
+        function doStyleDeWittCountyTXParcels7(feature) {
+            return {
+                weight: 3.44,
+                color: '#0042e2',
+                fillColor: '#000000',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                opacity: 1.0,
+                fillOpacity: 0.0
+            };
+        }
+        var json_DeWittCountyTXParcels7JSON = new L.geoJson(json_DeWittCountyTXParcels7, {
+            onEachFeature: pop_DeWittCountyTXParcels7,
+            style: doStyleDeWittCountyTXParcels7
+        });
+		dropdownLayer["DeWitt"] = json_DeWittCountyTXParcels7JSON;
+        layerOrder[layerOrder.length] = json_DeWittCountyTXParcels7JSON;
+        bounds_group.addLayer(json_DeWittCountyTXParcels7JSON);
+        initialOrder[initialOrder.length] = json_DeWittCountyTXParcels7JSON;
+        feature_group.addLayer(json_DeWittCountyTXParcels7JSON);
+		function pop_AtascosaCountyTXParcels8(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStyleAtascosaCountyTXParcels8(feature));
+
+                },
+                mouseover: highlightFeature,
+				click: function(e){
+					document.getElementById("name").innerHTML = feature.properties['Name'];
+					document.getElementById("acres").innerHTML = feature.properties['Acreage'];
+					document.getElementById("nma").innerHTML = feature.properties['NMA'];
+					document.getElementById("legal").innerHTML = feature.properties['Legal_Desc'];
+					}
+            });
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['Name'] !== null ? Autolinker.link(String(feature.properties['Name'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Acreage'] !== null ? Autolinker.link(String(feature.properties['Acreage'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['NMA'] !== null ? Autolinker.link(String(feature.properties['NMA'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['Legal_Desc'] !== null ? Autolinker.link(String(feature.properties['Legal_Desc'])) : '') + '</td></tr></table>';
+            //layer.bindPopup(popupContent);
+        }
+
+        function doStyleAtascosaCountyTXParcels8(feature) {
+            return {
+                weight: 3.44,
+                color: '#0042e2',
+                fillColor: '#000000',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                opacity: 1.0,
+                fillOpacity: 0.0
+            };
+        }
+        var json_AtascosaCountyTXParcels8JSON = new L.geoJson(json_AtascosaCountyTXParcels8, {
+            onEachFeature: pop_AtascosaCountyTXParcels8,
+            style: doStyleAtascosaCountyTXParcels8
+        });
+		dropdownLayer["Atascosa"] = json_AtascosaCountyTXParcels8JSON; 
+        layerOrder[layerOrder.length] = json_AtascosaCountyTXParcels8JSON;
+        bounds_group.addLayer(json_AtascosaCountyTXParcels8JSON);
+        initialOrder[initialOrder.length] = json_AtascosaCountyTXParcels8JSON;
+        feature_group.addLayer(json_AtascosaCountyTXParcels8JSON);
+		raster_group.addTo(map);
+        feature_group.addTo(map);
+        L.control.scale({options: {position: 'bottomleft', maxWidth: 100, metric: true, imperial: false, updateWhenIdle: false}}).addTo(map);
+        stackLayers();
+        map.on('overlayadd', restackLayers);
+		
+		function dropdownChanged(){
+			var layerSelect = document.getElementById("countyLayers").value;
+			var counties = dropdownLayer[layerSelect];
+			map.fitBounds(counties.getBounds());
+				}
+		
+        </script>
+		
+    </body>
+</html>
